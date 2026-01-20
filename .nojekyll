@@ -1,0 +1,2 @@
+# Este archivo desactiva el procesamiento de Jekyll en GitHub Pages
+# Permite que archivos y carpetas que comienzan con underscore (_) sean servidos
