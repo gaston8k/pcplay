@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fotomap - Visualizador de Fotos Georreferenciadas</title>
+    <meta name="description" content="Visualizador web de fotos georreferenciadas de Fotomap News">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo i {
+            font-size: 2.5rem;
+            color: #4fc3f7;
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #4fc3f7, #29b6f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo span {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            background: linear-gradient(90deg, #2962ff, #448aff);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(41, 98, 255, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(41, 98, 255, 0.4);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #448aff;
+            color: #448aff;
+        }
+
+        .btn-outline:hover {
+            background: rgba(68, 138, 255, 0.1);
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4fc3f7;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        #map {
+            flex: 1;
+            height: calc(100vh - 120px);
+            z-index: 1;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: rgba(30, 30, 46, 0.95);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(100%);
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.5rem;
+            color: #4fc3f7;
+        }
+
+        .close-sidebar {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .close-sidebar:hover {
+            opacity: 1;
+        }
+
+        .photo-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .photo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .photo-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-info {
+            padding: 1.5rem;
+        }
+
+        .photo-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .photo-category {
+            background: rgba(79, 195, 247, 0.2);
+            color: #4fc3f7;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .photo-description {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .photo-location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-top: 5px solid #4fc3f7;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .leaflet-popup-content {
+            max-width: 300px;
+        }
+
+        .popup-photo {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .popup-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #1a237e;
+        }
+
+        .popup-description {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .popup-link {
+            display: inline-block;
+            background: #2962ff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        .popup-link:hover {
+            background: #1a237e;
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem 2rem;
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .mobile-toggle {
+            display: none;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1001;
+            background: #2962ff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                right: 0;
+                height: 100vh;
+                width: 90%;
+                max-width: 400px;
+                z-index: 1002;
+                transform: translateX(100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .mobile-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .stats {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-map-marked-alt"></i>
+            <div>
+                <h1>Fotomap Viewer</h1>
+                <span>Visualizador web de fotos georreferenciadas</span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="total-photos">0</div>
+                <div class="stat-label">Fotos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="visible-photos">0</div>
+                <div class="stat-label">Visibles</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-categories">0</div>
+                <div class="stat-label">Categorías</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="refresh-btn">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+            <button class="btn btn-outline" id="toggle-sidebar">
+                <i class="fas fa-list"></i> Lista de Fotos
+            </button>
+            <button class="btn btn-outline" id="locate-btn">
+                <i class="fas fa-location-arrow"></i> Mi Ubicación
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <button class="mobile-toggle" id="mobile-sidebar-toggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div id="map"></div>
+
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-camera"></i> Fotos Recientes</h2>
+                <button class="close-sidebar" id="close-sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div id="photos-list">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Cargando fotos...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Fotomap News &copy; 2026 - Visualizador web | Fotos públicas georreferenciadas | Dominio:
+            fotomap.pcplay.com.ar</p>
+    </footer>
+
+    <script>
+        // Variables globales
+        let map;
+        let markers = [];
+        let photos = [];
+        let currentLocation = null;
+
+        // CONFIGURACIÓN - REEMPLAZAR ANTES DE SUBIR A GITHUB
+        const CONFIG = {
+            WORKER_URL: 'https://fotomap-proxy.gaston8k.workers.dev/api/photos',
+            R2_PUBLIC_URL: 'https://fotomap.pcplay.com.ar'
+        };
+
+        // Iconos personalizados para categorías
+        const categoryIcons = {
+            'default': L.divIcon({
+                html: '<i class="fas fa-camera" style="color: #2962ff; font-size: 20px;"></i>',
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            }),
+            'nature': L.divIcon({
+                html: '<i class="fas fa-tree" style="color: #4CAF50; font-size: 20px;"></i>',
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            }),
+            'urban': L.divIcon({
+                html: '<i class="fas fa-building" style="color: #FF9800; font-size: 20px;"></i>',
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            }),
+            'food': L.divIcon({
+                html: '<i class="fas fa-utensils" style="color: #E91E63; font-size: 20px;"></i>',
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            }),
+            'event': L.divIcon({
+                html: '<i class="fas fa-calendar-alt" style="color: #9C27B0; font-size: 20px;"></i>',
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            })
+        };
+
+        // Helper para formatear tiempo relativo
+        function formatTimeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now.getTime() - date.getTime();
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffMins < 60) {
+                return `${diffMins} min`;
+            } else if (diffHours < 24) {
+                return `${diffHours} horas`;
+            } else {
+                return `${diffDays} días`;
+            }
+        }
+
+        // Helper para construir URL pública de imagen
+        function buildPublicImageUrl(fileName) {
+            if (!fileName) return 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80';
+            if (fileName.startsWith('http')) return fileName;
+            return `${CONFIG.R2_PUBLIC_URL}/${fileName}`;
+        }
+
+        // Inicializar mapa
+        function initMap() {
+            const defaultCenter = [-34.6037, -58.3816];
+
+            map = L.map('map').setView(defaultCenter, 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = [position.coords.latitude, position.coords.longitude];
+                        map.setView(currentLocation, 15);
+
+                        L.marker(currentLocation, {
+                            icon: L.divIcon({
+                                html: '<i class="fas fa-location-dot" style="color: #FF5722; font-size: 24px;"></i>',
+                                className: 'current-location-marker',
+                                iconSize: [30, 30],
+                                iconAnchor: [15, 30]
+                            })
+                        }).addTo(map)
+                            .bindPopup('Tu ubicación actual')
+                            .openPopup();
+                    },
+                    (error) => {
+                        console.log('Error obteniendo ubicación:', error);
+                    }
+                );
+            }
+
+            loadPhotosFromSupabase();
+        }
+
+                // Cargar fotos desde Cloudflare Worker (Proxy Seguro)
+        async function loadPhotosFromSupabase() {
+            try {
+                // Verificar que la URL del Worker esté configurada
+                if (CONFIG.WORKER_URL.includes('<TU_USUARIO>')) {
+                    throw new Error('Configura la URL de tu Worker en el archivo HTML');
+                }
+
+                const response = await fetch(CONFIG.WORKER_URL);
+
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                photos = data.map(item => ({
+                    id: item.id,
+                    title: item.title || "Sin título",
+                    description: item.description || "",
+                    lat: item.lat,
+                    lng: item.lng,
+                    imageUrl: buildPublicImageUrl(item.imageUrl),
+                    category: item.category || "general",
+                    categoryId: item.categoryId,
+                    createdAt: item.createdAt,
+                    timeAgo: formatTimeAgo(item.createdAt),
+                    userId: item.userId,
+                }));
+
+                updateStats();
+                renderMarkers();
+                renderPhotoList();
+
+            } catch (error) {
+                console.error('Error cargando fotos desde Worker:', error);
+                document.getElementById('photos-list').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <p>${error.message}</p>
+                        <p>Configura la URL de tu Worker en el archivo HTML</p>
+                        <button class="btn" onclick="loadExamplePhotos()" style="margin-top: 1rem;">
+                            <i class="fas fa-database"></i> Ver datos de ejemplo
+                        </button>
+                    </div>
+                `;
+                loadExamplePhotos();
+            }
+        }
+
+        // Cargar datos de ejemplo (fallback)
+        function loadExamplePhotos() {
+            const mockPhotos = [
+                {
+                    id: 1,
+                    title: "Plaza de Mayo",
+                    description: "Foto histórica de la Plaza de Mayo en Buenos Aires",
+                    lat: -34.6083,
+                    lng: -58.3712,
+                    imageUrl: "https://images.unsplash.com/photo-1580913428021-8d30e5d8bd09?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+                    category: "urban",
+                    date: "2026-01-15",
+                    user: "Usuario1",
+                    timeAgo: "2 horas"
+                },
+                {
+                    id: 2,
+                    title: "Bosque de Palermo",
+                    description: "Paseo por el hermoso bosque de Palermo",
+                    lat: -34.5711,
+                    lng: -58.4233,
+                    imageUrl: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+                    category: "nature",
+                    date: "2026-01-20",
+                    user: "Usuario2",
+                    timeAgo: "1 día"
+                },
+                {
+                    id: 3,
+                    title: "Parrilla tradicional",
+                    description: "Asado argentino en una parrilla local",
+                    lat: -34.6000,
+                    lng: -58.4500,
+                    imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+                    category: "food",
+                    date: "2026-01-25",
+                    user: "Usuario3",
+                    timeAgo: "15 min"
+                }
+            ];
+
+            photos = mockPhotos;
+            updateStats();
+            renderMarkers();
+            renderPhotoList();
+        }
+
+        // Renderizar marcadores en el mapa
+        function renderMarkers() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            photos.forEach(photo => {
+                const icon = categoryIcons[photo.category] || categoryIcons['default'];
+
+                const marker = L.marker([photo.lat, photo.lng], { icon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <div class="popup-content">
+                            <img src="${photo.imageUrl}" alt="${photo.title}" class="popup-photo">
+                            <h3 class="popup-title">${photo.title}</h3>
+                            <p class="popup-description">${photo.description}</p>
+                            <p><strong>Categoría:</strong> ${photo.category}</p>
+                            <p><strong>Publicado:</strong> ${photo.timeAgo}</p>
+                            <button class="popup-link" onclick="showPhotoDetail(${photo.id}); return false;">
+                                <i class="fas fa-expand"></i> Ver detalles
+                            </button>
+                        </div>
+                    `);
+
+                marker.photoId = photo.id;
+                markers.push(marker);
+            });
+
+            updateStats();
+        }
+
+        // Renderizar lista de fotos en el sidebar
+        function renderPhotoList() {
+            const container = document.getElementById('photos-list');
+
+            if (photos.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <i class="fas fa-images" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                        <p>No hay fotos disponibles</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = photos.map(photo => `
+                <div class="photo-card" data-photo-id="${photo.id}">
+                    <img src="${photo.imageUrl}" alt="${photo.title}" class="photo-image">
+                    <div class="photo-info">
+                        <div class="photo-meta">
+                            <span><i class="far fa-calendar"></i> ${photo.timeAgo}</span>
+                            <span><i class="fas fa-user"></i> Usuario</span>
+                        </div>
+                        <div class="photo-category">${photo.category}</div>
+                        <h3 style="margin: 0.5rem 0; font-size: 1.2rem;">${photo.title}</h3>
+                        <p class="photo-description">${photo.description}</p>
+                        <div class="photo-location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>${photo.lat.toFixed(4)}, ${photo.lng.toFixed(4)}</span>
+                        </div>
+                        <button class="btn" style="margin-top: 1rem; width: 100%;" onclick="focusOnPhoto(${photo.id})">
+                            <i class="fas fa-search-location"></i> Ver en mapa
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            document.getElementById('total-photos').textContent = photos.length;
+            document.getElementById('visible-photos').textContent = markers.length;
+
+            const uniqueCategories = new Set(photos.map(p => p.category));
+            document.getElementById('total-categories').textContent = uniqueCategories.size;
+        }
+
+        // Enfocar en una foto específica
+        function focusOnPhoto(photoId) {
+            const photo = photos.find(p => p.id === photoId);
+            if (photo) {
+                map.setView([photo.lat, photo.lng], 16);
+
+                const marker = markers.find(m => m.photoId === photoId);
+                if (marker) {
+                    marker.openPopup();
+                }
+
+                if (window.innerWidth <= 1024) {
+                    document.getElementById('sidebar').classList.remove('active');
+                }
+            }
+        }
+
+        // Mostrar detalle de foto
+        function showPhotoDetail(photoId) {
+            const photo = photos.find(p => p.id === photoId);
+            if (photo) {
+                alert(`Detalle de foto:\n\nTítulo: ${photo.title}\nDescripción: ${photo.description}\nCategoría: ${photo.category}\nPublicado: ${photo.timeAgo}\nCoordenadas: ${photo.lat.toFixed(6)}, ${photo.lng.toFixed(6)}`);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            document.getElementById('photos-list').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Actualizando fotos...</p>
+                </div>
+            `;
+            setTimeout(loadPhotosFromSupabase, 1000);
+        });
+
+        document.getElementById('toggle-sidebar').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+        });
+
+        document.getElementById('mobile-sidebar-toggle').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        });
+
+        document.getElementById('close-sidebar').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.remove('active');
+            if (window.innerWidth > 1024) {
+                sidebar.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('locate-btn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        map.setView([position.coords.latitude, position.coords.longitude], 15);
+                    },
+                    (error) => {
+                        alert('No se pudo obtener tu ubicación. Asegúrate de tener los permisos activados.');
+                    }
+                );
+            } else {
+                alert('Tu navegador no soporta geolocalización.');
+            }
+        });
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', initMap);
+
+        // Manejar redimensionamiento
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1024) {
+                document.getElementById('sidebar').classList.remove('active');
+            }
+        });
+    </script>
+</body>
+
+</html>
