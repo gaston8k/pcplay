@@ -128,31 +128,50 @@
             display: flex;
             position: relative;
             min-height: 0;
-            /* Permite que los hijos flex se contraigan */
         }
 
         #map {
-            flex: 1;
+            flex: 1 1 0%;
             height: 100%;
             min-height: 400px;
             z-index: 1;
-            /* Debug temporal */
-            border: 2px solid red;
-            background-color: rgba(0, 0, 255, 0.1);
+        }
+
+        .sidebar {
+            flex-shrink: 0;
+            width: 400px;
+            background: rgba(30, 30, 46, 0.95);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            height: 100%;
         }
 
         .sidebar {
             width: 400px;
             background: rgba(30, 30, 46, 0.95);
             border-left: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2rem;
-            overflow-y: auto;
+            padding: 0;
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
-            gap: 2rem;
             transition: transform 0.3s ease;
             height: 100%;
+        }
+
+        .sidebar-header {
+            padding: 2rem 2rem 1rem;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #photos-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 2rem 2rem;
         }
 
         .sidebar.hidden {
@@ -760,11 +779,11 @@
             }
         }
 
-        // Mostrar detalle de foto
+        // Mostrar detalle de foto (abre imagen HD en nueva pestaña)
         function showPhotoDetail(photoId) {
             const photo = photos.find(p => p.id === photoId);
             if (photo) {
-                alert(`Detalle de foto:\n\nTítulo: ${photo.title}\nDescripción: ${photo.description}\nCategoría: ${photo.category}\nPublicado: ${photo.timeAgo}\nCoordenadas: ${photo.lat.toFixed(6)}, ${photo.lng.toFixed(6)}`);
+                window.open(photo.imageUrl, '_blank');
             }
         }
 
