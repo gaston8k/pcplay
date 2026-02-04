@@ -127,14 +127,18 @@
             flex: 1;
             display: flex;
             position: relative;
-            height: calc(100vh - 120px);
-            overflow: hidden;
+            min-height: 0;
+            /* Permite que los hijos flex se contraigan */
         }
 
         #map {
             flex: 1;
             height: 100%;
+            min-height: 400px;
             z-index: 1;
+            /* Debug temporal */
+            border: 2px solid red;
+            background-color: rgba(0, 0, 255, 0.1);
         }
 
         .sidebar {
@@ -148,7 +152,6 @@
             flex-direction: column;
             gap: 2rem;
             transition: transform 0.3s ease;
-            max-height: calc(100vh - 120px);
             height: 100%;
         }
 
